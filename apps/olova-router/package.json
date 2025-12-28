@@ -1,7 +1,7 @@
 {
   "name": "olova-router",
-  "version": "1.0.5",
-  "description": "Next.js-style folder-based routing for React + Vite applications",
+  "version": "1.0.6",
+  "description": "A client-first folder-based routing for React + Vite applications",
   "author": "",
   "license": "MIT",
   "type": "module",
@@ -28,12 +28,27 @@
   },
   "keywords": [
     "react",
+    "javascript",
+    "url",
+    "search",
+    "framework",
+    "typescript",
     "router",
+    "state-management",
+    "ssr",
+    "ssg",
+    "routing",
+    "rpc",
+    "route",
+    "typesafe",
+    "fullstack",
+    "searchparams",
+    "server-functions",
     "vite",
     "vite-plugin",
     "file-based-routing",
     "folder-routing",
-    "nextjs-style"
+    "client-first"
   ],
   "peerDependencies": {
     "react": ">=18.0.0",

@@ -1,9 +1,4 @@
-export type SearchParams = Record<string, string | string[]>;
-
-export interface SetSearchParamsOptions {
-  replace?: boolean;
-  merge?: boolean;
-}
+import type { SearchParams } from '../types';
 
 export function parseSearchParams(search: string): SearchParams {
   const params: SearchParams = {};

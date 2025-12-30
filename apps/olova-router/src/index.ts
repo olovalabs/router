@@ -5,12 +5,16 @@ export {
   useRouter, 
   useParams, 
   useSearchParams, 
+  usePathname,
   createLink,
   Outlet,
   type NotFoundPageConfig,
   type SearchParams,
   type SetSearchParamsOptions,
-  type LayoutRoute
+  type LayoutRoute,
+  type RouterContextType,
+  type OutletContextType,
+  type Metadata
 } from './components';
 
 import { olovaRouter } from './plugin';

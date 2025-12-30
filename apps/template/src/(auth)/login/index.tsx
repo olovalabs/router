@@ -1,5 +1,12 @@
 import { Link, useRouter } from "@/route.tree";
 
+
+export const metadata = {
+    title: "Login",
+    description: "Login page",
+    keywords: ["login", "page"],
+}
+
 export default function Login() {
   const { navigate } = useRouter();
 

@@ -1,11 +1,12 @@
-import { Link, useSearchParams } from "@/route.tree";
+import { Link, useSearchParams, useRouter } from "@/route.tree";
 
 export default function Search() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
+  const { setSearchParams } = useRouter();
 
-  const query = searchParams.q || "";
-  const page = searchParams.page || "1";
-  const sort = searchParams.sort || "relevance";
+  const query = searchParams.get("q") || "";
+  const page = searchParams.get("page") || "1";
+  const sort = searchParams.get("sort") || "relevance";
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParams({ q: e.target.value, page: "1" }, { merge: true });
@@ -51,10 +52,10 @@ export default function Search() {
             <h3 className="card-title mb-4">Current Parameters</h3>
             <pre className="p-4 rounded-lg" style={{ backgroundColor: 'hsl(var(--muted))' }}>
               <code>{`{
-  q: "${query}",
-  page: "${page}",
-  sort: "${sort}"
-}`}</code>
+            q: "${query}",
+            page: "${page}",
+            sort: "${sort}"
+          }`}</code>
             </pre>
           </div>
 

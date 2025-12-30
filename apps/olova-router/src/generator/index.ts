@@ -1,21 +1,5 @@
 import path from 'path';
-import type { RouteConfig, NotFoundEntry } from '../types';
-import type { LayoutEntry } from '../scanner';
-
-export interface RouteWithExport extends RouteConfig {
-  hasDefault: boolean;
-  namedExport: string | null;
-}
-
-export interface NotFoundWithExport extends NotFoundEntry {
-  hasDefault: boolean;
-  namedExport: string | null;
-}
-
-export interface LayoutWithExport extends LayoutEntry {
-  hasDefault: boolean;
-  namedExport: string | null;
-}
+import type { RouteWithExport, NotFoundWithExport, LayoutWithExport } from '../types';
 
 export function generateRouteTree(
   routes: RouteWithExport[], 
@@ -26,77 +10,82 @@ export function generateRouteTree(
   const routeImports = routes.map((route, index) => {
     const relativePath = './' + path.relative(srcDir, route.component).replace(/\\/g, '/').replace(/\.tsx?$/, '');
     
-    if (route.hasDefault) {
-      return `import Route${index} from '${relativePath}';`;
+    if (route.hasMetadata) {
+      return "import * as RouteModule" + index + " from '" + relativePath + "';";
+    } else if (route.hasDefault) {
+      return "import Route" + index + " from '" + relativePath + "';";
     } else if (route.namedExport) {
-      return `import { ${route.namedExport} as Route${index} } from '${relativePath}';`;
+      return "import { " + route.namedExport + " as Route" + index + " } from '" + relativePath + "';";
     } else {
-      return `import Route${index} from '${relativePath}';`;
+      return "import Route" + index + " from '" + relativePath + "';";
     }
   }).join('\n');
 
   const notFoundImports = notFoundPages.map((nf, index) => {
     const relativePath = './' + path.relative(srcDir, nf.filePath).replace(/\\/g, '/').replace(/\.tsx?$/, '');
     
-    if (nf.hasDefault) {
-      return `import NotFound${index} from '${relativePath}';`;
+    if (nf.hasMetadata) {
+      return "import * as NotFoundModule" + index + " from '" + relativePath + "';";
+    } else if (nf.hasDefault) {
+      return "import NotFound" + index + " from '" + relativePath + "';";
     } else if (nf.namedExport) {
-      return `import { ${nf.namedExport} as NotFound${index} } from '${relativePath}';`;
+      return "import { " + nf.namedExport + " as NotFound" + index + " } from '" + relativePath + "';";
     } else {
-      return `import NotFound${index} from '${relativePath}';`;
+      return "import NotFound" + index + " from '" + relativePath + "';";
     }
   }).join('\n');
 
   const layoutImports = layouts.map((layout, index) => {
     const relativePath = './' + path.relative(srcDir, layout.filePath).replace(/\\/g, '/').replace(/\.tsx?$/, '');
     
-    if (layout.hasDefault) {
-      return `import Layout${index} from '${relativePath}';`;
+    if (layout.hasMetadata) {
+       return "import * as LayoutModule" + index + " from '" + relativePath + "';";
+    } else if (layout.hasDefault) {
+      return "import Layout" + index + " from '" + relativePath + "';";
     } else if (layout.namedExport) {
-      return `import { ${layout.namedExport} as Layout${index} } from '${relativePath}';`;
+      return "import { " + layout.namedExport + " as Layout" + index + " } from '" + relativePath + "';";
     } else {
-      return `import Layout${index} from '${relativePath}';`;
+      return "import Layout" + index + " from '" + relativePath + "';";
     }
   }).join('\n');
 
   const routeObjects = routes.map((route, index) => {
-    return `  { path: '${route.path}', component: Route${index} }`;
+    const component = route.hasMetadata ? "RouteModule" + index + ".default" : "Route" + index;
+    const metadata = route.hasMetadata ? ", metadata: RouteModule" + index + ".metadata" : '';
+    return "  { path: '" + route.path + "', component: " + component + metadata + " }";
   }).join(',\n');
 
   const notFoundObjects = notFoundPages.map((nf, index) => {
-    return `  { pathPrefix: '${nf.pathPrefix}', component: NotFound${index} }`;
+    const component = nf.hasMetadata ? "NotFoundModule" + index + ".default" : "NotFound" + index;
+    const metadata = nf.hasMetadata ? ", metadata: NotFoundModule" + index + ".metadata" : '';
+    return "  { pathPrefix: '" + nf.pathPrefix + "', component: " + component + metadata + " }";
   }).join(',\n');
 
   const layoutObjects = layouts.map((layout, index) => {
-    return `  { path: '${layout.path}', layout: Layout${index}, children: [] }`;
+    const component = layout.hasMetadata ? "LayoutModule" + index + ".default" : "Layout" + index;
+    const metadata = layout.hasMetadata ? ", metadata: LayoutModule" + index + ".metadata" : '';
+    return "  { path: '" + layout.path + "', layout: " + component + metadata + ", children: [] }";
   }).join(',\n');
 
-  const routePaths = routes.length > 0 ? routes.map(r => `'${r.path}'`).join(' | ') : 'never';
+  const routePaths = routes.length > 0 ? routes.map(r => "'" + r.path + "'").join(' | ') : 'never';
 
   const allImports = [routeImports, notFoundImports, layoutImports].filter(Boolean).join('\n');
 
-  return `// Auto-generated by olova-router - DO NOT EDIT
-// This file is auto-updated when you add/remove route folders
-
-import { createLink, OlovaRouter, useRouter, useParams, useSearchParams, Outlet } from 'olova-router/router';
-${allImports}
-
-export const routes = [
-${routeObjects || ''}
-];
-
-export const notFoundPages = [
-${notFoundObjects || ''}
-];
-
-export const layouts = [
-${layoutObjects || ''}
-];
-
-export type RoutePaths = ${routePaths};
-
-export const Link = createLink<RoutePaths>();
-export { OlovaRouter, useRouter, useParams, useSearchParams, Outlet };
-export type { NotFoundPageConfig, SearchParams, SetSearchParamsOptions, LayoutRoute } from 'olova-router/router';
-`;
+  return "// Auto-generated by olova-router - DO NOT EDIT\n" +
+"// This file is auto-updated when you add/remove route folders\n\n" +
+"import { createLink, OlovaRouter, useRouter, useParams, useSearchParams, usePathname, Outlet } from 'olova-router/router';\n" +
+allImports + "\n\n" +
+"export const routes = [\n" +
+(routeObjects || '') + "\n" +
+"];\n\n" +
+"export const notFoundPages = [\n" +
+(notFoundObjects || '') + "\n" +
+"];\n\n" +
+"export const layouts = [\n" +
+(layoutObjects || '') + "\n" +
+"];\n\n" +
+"export type RoutePaths = " + routePaths + ";\n\n" +
+"export const Link = createLink<RoutePaths>();\n" +
+"export { OlovaRouter, useRouter, useParams, useSearchParams, usePathname, Outlet };\n" +
+"export type { NotFoundPageConfig, SearchParams, SetSearchParamsOptions, LayoutRoute, Metadata } from 'olova-router/router';\n";
 }

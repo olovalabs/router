@@ -19,7 +19,7 @@ export type ResolveRoutePath<Path extends string> =
 type ResolveRoutes<T extends string> = T extends string ? ResolveRoutePath<T> : never;
 
 export function createLink<T extends string>() {
-  return function Link({ href, children, className }: { href: ResolveRoutes<T>; children: ReactNode; className?: string }) {
+  const Link = ({ href, children, className }: { href: ResolveRoutes<T>; children: ReactNode; className?: string }) => {
     const { navigate } = useRouter();
     return (
       <a href={href} className={className} onClick={(e) => { e.preventDefault(); navigate(href); }}>
@@ -27,4 +27,5 @@ export function createLink<T extends string>() {
       </a>
     );
   };
+  return Link;
 }

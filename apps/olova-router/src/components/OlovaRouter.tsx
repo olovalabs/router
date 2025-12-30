@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, type ReactNode, type ComponentType } from 'react';
 import { RouterContext, OutletContext } from './context';
-import { parseSearchParams, buildSearchString, type SearchParams, type SetSearchParamsOptions } from './search-params';
-import { matchRoute, matchLayoutScope, findNotFoundPage, type Route, type LayoutRoute, type NotFoundPageConfig } from './matching';
+import { parseSearchParams, buildSearchString } from './search-params';
+import { matchRoute, matchLayoutScope, findNotFoundPage } from './matching';
+import type { Route, LayoutRoute, NotFoundPageConfig, SearchParams, SetSearchParamsOptions } from '../types';
 
 interface OlovaRouterProps {
   routes: Route[];
@@ -25,8 +26,22 @@ export function OlovaRouter({ routes, layouts = [], notFoundPages = [], notFound
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+
+
   const navigate = (path: string) => {
     window.history.pushState({}, '', path);
+    setCurrentPath(path.split('?')[0]);
+    setSearchParamsState(parseSearchParams(path.includes('?') ? path.split('?')[1] : ''));
+  };
+
+  const push = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path.split('?')[0]);
+    setSearchParamsState(parseSearchParams(path.includes('?') ? path.split('?')[1] : ''));
+  };
+
+  const replace = (path: string) => {
+    window.history.replaceState({}, '', path);
     setCurrentPath(path.split('?')[0]);
     setSearchParamsState(parseSearchParams(path.includes('?') ? path.split('?')[1] : ''));
   };
@@ -35,7 +50,7 @@ export function OlovaRouter({ routes, layouts = [], notFoundPages = [], notFound
     newParams: Record<string, string | string[] | null>,
     options: SetSearchParamsOptions = {}
   ) => {
-    const { replace = false, merge = false } = options;
+    const { replace: shouldReplace = false, merge = false } = options;
     
     let finalParams: Record<string, string | string[] | null>;
     
@@ -53,7 +68,7 @@ export function OlovaRouter({ routes, layouts = [], notFoundPages = [], notFound
     const searchString = buildSearchString(finalParams as Record<string, string | string[] | null>);
     const newUrl = currentPath + searchString;
     
-    if (replace) {
+    if (shouldReplace) {
       window.history.replaceState({}, '', newUrl);
     } else {
       window.history.pushState({}, '', newUrl);
@@ -76,6 +91,57 @@ export function OlovaRouter({ routes, layouts = [], notFoundPages = [], notFound
       return b.path.length - a.path.length;
     });
   }, [routes]);
+
+  // Store default title on mount
+  const [defaultTitle] = useState(document.title);
+
+  // Compute matched route for metadata
+  const currentRoute = useMemo(() => {
+    for (const route of sortedRoutes) {
+      if (route.path === '/' && currentPath === '/') return route;
+      const result = matchRoute(route.path, currentPath);
+      if (result.match) return route;
+    }
+    return null;
+  }, [sortedRoutes, currentPath]);
+
+  // Update metadata
+  useEffect(() => {
+    const metadata = currentRoute?.metadata;
+
+    // Handle Title
+    if (metadata?.title) {
+      document.title = metadata.title;
+    } else {
+      document.title = defaultTitle;
+    }
+
+    // Handle Description
+    let descMeta = document.querySelector('meta[name="description"]');
+    if (metadata?.description) {
+      if (!descMeta) {
+        descMeta = document.createElement('meta');
+        descMeta.setAttribute('name', 'description');
+        document.head.appendChild(descMeta);
+      }
+      descMeta.setAttribute('content', metadata.description);
+    } else if (descMeta) {
+      document.head.removeChild(descMeta);
+    }
+
+    // Handle Keywords
+    let keywordsMeta = document.querySelector('meta[name="keywords"]');
+    if (metadata?.keywords) {
+      if (!keywordsMeta) {
+        keywordsMeta = document.createElement('meta');
+        keywordsMeta.setAttribute('name', 'keywords');
+        document.head.appendChild(keywordsMeta);
+      }
+      keywordsMeta.setAttribute('content', Array.isArray(metadata.keywords) ? metadata.keywords.join(', ') : metadata.keywords);
+    } else if (keywordsMeta) {
+      document.head.removeChild(keywordsMeta);
+    }
+  }, [currentRoute, defaultTitle]);
 
   const matchingLayouts = useMemo(() => {
     return layouts
@@ -118,7 +184,7 @@ export function OlovaRouter({ routes, layouts = [], notFoundPages = [], notFound
       const Layout = matchingLayouts[i].layout;
       const wrapped = result;
       result = (
-        <OutletContext.Provider value={{ component: () => <>{wrapped}</> }}>
+        <OutletContext.Provider value={{ content: wrapped }}>
           <Layout />
         </OutletContext.Provider>
       );
@@ -127,7 +193,7 @@ export function OlovaRouter({ routes, layouts = [], notFoundPages = [], notFound
   };
 
   return (
-    <RouterContext.Provider value={{ currentPath, params, searchParams, navigate, setSearchParams }}>
+    <RouterContext.Provider value={{ currentPath, params, searchParams, navigate, push, replace, setSearchParams }}>
       {renderContent()}
     </RouterContext.Provider>
   );

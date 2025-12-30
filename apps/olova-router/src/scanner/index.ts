@@ -1,18 +1,7 @@
 import path from 'path';
 import fs from 'fs';
-import type { RouteEntry, NotFoundEntry } from '../types';
+import type { RouteEntry, NotFoundEntry, ScanResult, LayoutEntry } from '../types';
 import { pathToRoute, isRouteGroup } from '../utils';
-
-export interface LayoutEntry {
-  path: string;
-  filePath: string;
-}
-
-export interface ScanResult {
-  routes: RouteEntry[];
-  notFoundPages: NotFoundEntry[];
-  layouts: LayoutEntry[];
-}
 
 function scanDirectory(
   dir: string, 

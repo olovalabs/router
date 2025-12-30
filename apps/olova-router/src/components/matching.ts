@@ -1,20 +1,5 @@
 import type { ComponentType } from 'react';
-
-export interface Route {
-  path: string;
-  component: ComponentType;
-}
-
-export interface LayoutRoute {
-  path: string;
-  layout: ComponentType;
-  children: Route[];
-}
-
-export interface NotFoundPageConfig {
-  pathPrefix: string;
-  component: ComponentType;
-}
+import type { NotFoundPageConfig } from '../types';
 
 export function matchRoute(pattern: string, pathname: string) {
   const patternParts = pattern.split('/').filter(Boolean);

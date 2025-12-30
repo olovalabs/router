@@ -1,12 +1,11 @@
-import type { Plugin, ResolvedConfig } from 'vite';
 import path from 'path';
 import fs from 'fs';
-import type { OlovaRouterOptions } from '../types';
+import type { OlovaRouterOptions, RouteWithExport, NotFoundWithExport, LayoutWithExport, ResolvedConfig, PluginOption } from '../types';
 import { scanRoutes } from '../scanner';
 import { detectExportType } from '../utils';
-import { generateRouteTree, type RouteWithExport, type NotFoundWithExport, type LayoutWithExport } from '../generator';
+import { generateRouteTree } from '../generator';
 
-export function olovaRouter(options: OlovaRouterOptions = {}): Plugin {
+export function olovaRouter(options: OlovaRouterOptions = {}): PluginOption {
   const rootDir = options.rootDir || 'src';
   const extensions = options.extensions || ['.tsx', '.ts'];
 
@@ -24,7 +23,8 @@ export function olovaRouter(options: OlovaRouterOptions = {}): Plugin {
         component: r.filePath.replace(/\\/g, '/'),
         params: r.params.length > 0 ? r.params : undefined,
         hasDefault: exportInfo.hasDefault,
-        namedExport: exportInfo.namedExport
+        namedExport: exportInfo.namedExport,
+        hasMetadata: exportInfo.hasMetadata
       };
     });
 
@@ -34,7 +34,8 @@ export function olovaRouter(options: OlovaRouterOptions = {}): Plugin {
         pathPrefix: nf.pathPrefix,
         filePath: nf.filePath.replace(/\\/g, '/'),
         hasDefault: exportInfo.hasDefault,
-        namedExport: exportInfo.namedExport
+        namedExport: exportInfo.namedExport,
+        hasMetadata: exportInfo.hasMetadata
       };
     });
 
@@ -44,7 +45,8 @@ export function olovaRouter(options: OlovaRouterOptions = {}): Plugin {
         path: l.path,
         filePath: l.filePath.replace(/\\/g, '/'),
         hasDefault: exportInfo.hasDefault,
-        namedExport: exportInfo.namedExport
+        namedExport: exportInfo.namedExport,
+        hasMetadata: exportInfo.hasMetadata
       };
     });
     
@@ -84,7 +86,7 @@ export function olovaRouter(options: OlovaRouterOptions = {}): Plugin {
   return {
     name: 'olova-router',
 
-    configResolved(resolvedConfig) {
+    configResolved(resolvedConfig: ResolvedConfig) {
       config = resolvedConfig;
       absoluteRootDir = path.resolve(config.root, rootDir);
     },

@@ -12,7 +12,7 @@ export function matchRoute(pattern: string, pathname: string) {
     const pathPart = pathParts[i];
 
     if (patternPart === '*') {
-      params['slug'] = pathParts.slice(i).join('/');
+      params['*'] = pathParts.slice(i).join('/');
       return { match: true, params };
     }
 

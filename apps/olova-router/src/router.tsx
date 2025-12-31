@@ -14,6 +14,15 @@ export {
   usePending,
   useLoaderError,
   useSubmit,
+  // New powerful exports
+  defer,
+  Await,
+  prefetch,
+  invalidateLoader,
+  invalidateAll,
+  useInvalidate,
+  useRouteContext,
+  useRevalidate,
   type NotFoundPageConfig,
   type SearchParams,
   type SetSearchParamsOptions,
@@ -23,5 +32,7 @@ export {
   type RouteDefinition,
   type LoaderContext,
   type ActionContext,
-  type ClientOnlyOptions
+  type ClientOnlyOptions,
+  type DeferredData,
+  type RouteContext,
 } from './components';

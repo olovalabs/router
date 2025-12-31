@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, lazy, Suspense, type ReactNode, type ComponentType } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense, type ReactNode, type ComponentType } from 'react';
 import { RouterContext, OutletContext } from './context';
 import { parseSearchParams, buildSearchString } from './search-params';
 import { matchRoute, matchLayoutScope, findNotFoundPage } from './matching';
-import { RouteWithLoader } from './RouteWithLoader';
+import { RouteWithLoader, prefetch as prefetchData } from './RouteWithLoader';
 import type { Route, LayoutRoute, NotFoundPageConfig, SearchParams, SetSearchParamsOptions, Metadata, RouteDefinition } from '../types';
 
 interface OlovaRouterProps {
@@ -24,6 +24,9 @@ export function OlovaRouter({
   const [searchParams, setSearchParamsState] = useState<SearchParams>(() =>
     parseSearchParams(window.location.search)
   );
+
+  // Store the default title on initial mount
+  const [defaultTitle] = useState(() => document.title);
 
   useEffect(() => {
     const onPopState = () => {
@@ -98,19 +101,8 @@ export function OlovaRouter({
     });
   }, [routes]);
 
-  const [defaultTitle] = useState(document.title);
-
-  const currentRoute = useMemo(() => {
-    for (const route of sortedRoutes) {
-      if (route.path === '/' && currentPath === '/') return route;
-      const result = matchRoute(route.path, currentPath);
-      if (result.match) return route;
-    }
-    return null;
-  }, [sortedRoutes, currentPath]);
-
-  const applyMetadata = (metadata: Metadata | undefined) => {
-
+  // Memoized function to apply metadata to document
+  const applyMetadata = useCallback((metadata: Metadata | undefined) => {
     if (metadata?.title) {
       document.title = metadata.title;
     } else {
@@ -140,39 +132,76 @@ export function OlovaRouter({
     } else if (keywordsMeta) {
       document.head.removeChild(keywordsMeta);
     }
-  };
+  }, [defaultTitle]);
+
+  const { currentRoute, MatchedComponent, matchedRouteDefinition, params } = useMemo(() => {
+    for (const route of sortedRoutes) {
+      if (route.path === '/' && currentPath === '/') {
+        return {
+          currentRoute: route,
+          MatchedComponent: route.component || null,
+          matchedRouteDefinition: route.routeDefinition,
+          params: {} as Record<string, string>
+        };
+      }
+      const result = matchRoute(route.path, currentPath);
+      if (result.match) {
+        return {
+          currentRoute: route,
+          MatchedComponent: route.component || null,
+          matchedRouteDefinition: route.routeDefinition,
+          params: result.params
+        };
+      }
+    }
+    return {
+      currentRoute: null as Route | null,
+      MatchedComponent: null as ComponentType | null,
+      matchedRouteDefinition: undefined as RouteDefinition | undefined,
+      params: {} as Record<string, string>
+    };
+  }, [sortedRoutes, currentPath]);
+
+  const prefetch = useCallback((path: string) => {
+    let targetRoute: Route | null = null;
+    let targetParams: Record<string, string> = {};
+    const pathname = path.split('?')[0];
+
+    for (const route of sortedRoutes) {
+      if (route.path === '/' && pathname === '/') {
+        targetRoute = route;
+        targetParams = {};
+        break;
+      }
+      const result = matchRoute(route.path, pathname);
+      if (result.match) {
+        targetRoute = route;
+        targetParams = result.params;
+        break;
+      }
+    }
+
+    if (targetRoute?.routeDefinition?.loader && targetRoute.routeDefinition.preload) {
+      const searchStr = path.includes('?') ? path.split('?')[1] : '';
+      const searchParams = new URLSearchParams(searchStr);
+      prefetchData(pathname, targetRoute.routeDefinition.loader, {
+        params: targetParams,
+        searchParams
+      });
+    }
+  }, [sortedRoutes]);
 
   useEffect(() => {
-
     if (!currentRoute?.loader) {
       applyMetadata(currentRoute?.metadata);
     }
-  }, [currentRoute, defaultTitle]);
+  }, [currentRoute, applyMetadata]);
 
   const matchingLayouts = useMemo(() => {
     return layouts
       .filter(layout => matchLayoutScope(layout.path, currentPath))
       .sort((a, b) => a.path.length - b.path.length);
   }, [layouts, currentPath]);
-
-  let MatchedComponent: ComponentType | null = null;
-  let matchedRouteDefinition: RouteDefinition | undefined = undefined;
-  let params: Record<string, string> = {};
-
-  for (const route of sortedRoutes) {
-    if (route.path === '/' && currentPath === '/') {
-      MatchedComponent = route.component || null;
-      matchedRouteDefinition = route.routeDefinition;
-      break;
-    }
-    const result = matchRoute(route.path, currentPath);
-    if (result.match) {
-      MatchedComponent = route.component || null;
-      matchedRouteDefinition = route.routeDefinition;
-      params = result.params;
-      break;
-    }
-  }
 
   const searchParamsForLoader = useMemo(() => {
     const urlParams = new URLSearchParams();
@@ -186,55 +215,60 @@ export function OlovaRouter({
     return urlParams;
   }, [searchParams]);
 
-  const LazyComponent = useMemo(() => {
-    if (currentRoute?.loader) {
-      return lazy(async () => {
-        const mod = await currentRoute.loader!();
-        const Component = mod.default;
-        const metadata = mod.metadata;
+  // Helper component to apply metadata after lazy load
+  const LazyMetadataWrapper = useMemo(() => {
+    if (!currentRoute?.loader) return null;
+    
+    const applyMeta = applyMetadata;
+    return lazy(async () => {
+      const mod = await currentRoute.loader!();
+      const Component = mod.default;
+      const metadata = mod.metadata;
+      
+      // Return a wrapper that will apply metadata on mount
+      return {
+        default: function LazyRouteWithMetadata(props: Record<string, unknown>) {
+          useEffect(() => {
+            applyMeta(metadata);
+          }, []);
+          return <Component {...props} />;
+        }
+      };
+    });
+  }, [currentRoute, applyMetadata]);
 
-        return {
-          default: (props: any) => {
-            useEffect(() => {
-              applyMetadata(metadata);
-            }, []);
-            return <Component {...props} />;
-          }
-        };
-      });
+  // Compute final component including 404 fallback
+  const FinalComponent = useMemo(() => {
+    if (MatchedComponent) return MatchedComponent;
+    if (!LazyMetadataWrapper) {
+      return findNotFoundPage(currentPath, notFoundPages);
     }
     return null;
-  }, [currentRoute]);
-
-  if (!MatchedComponent && !LazyComponent) {
-    const NotFoundComponent = findNotFoundPage(currentPath, notFoundPages);
-    if (NotFoundComponent) {
-      MatchedComponent = NotFoundComponent;
-    }
-  }
+  }, [MatchedComponent, LazyMetadataWrapper, currentPath, notFoundPages]);
 
   const renderContent = () => {
     let content: ReactNode = notFound;
 
-    if (LazyComponent) {
+    if (LazyMetadataWrapper) {
        content = (
          <Suspense fallback={loadingFallback}>
-           <LazyComponent />
+           <LazyMetadataWrapper />
          </Suspense>
        );
-    } else if (MatchedComponent && matchedRouteDefinition?.loader) {
+    } else if (FinalComponent && matchedRouteDefinition?.loader) {
        // Route has a clientOnly loader - use RouteWithLoader
        content = (
          <RouteWithLoader
-           component={MatchedComponent}
+           component={FinalComponent}
            routeDefinition={matchedRouteDefinition}
            params={params}
            searchParams={searchParamsForLoader}
            loadingFallback={loadingFallback}
+           pathname={currentPath}
          />
        );
-    } else if (MatchedComponent) {
-       content = <MatchedComponent />;
+    } else if (FinalComponent) {
+       content = <FinalComponent />;
     }
 
     if (matchingLayouts.length === 0) {
@@ -243,7 +277,8 @@ export function OlovaRouter({
 
     let result = content;
     for (let i = matchingLayouts.length - 1; i >= 0; i--) {
-      const Layout = matchingLayouts[i].layout!; // Assume layout component exists
+      const Layout = matchingLayouts[i].layout;
+      if (!Layout) continue; // Skip if layout component doesn't exist
       const wrapped = result;
       result = (
         <OutletContext.Provider value={{ content: wrapped }}>
@@ -255,7 +290,7 @@ export function OlovaRouter({
   };
 
   return (
-    <RouterContext.Provider value={{ currentPath, params, searchParams, navigate, push, replace, setSearchParams }}>
+    <RouterContext.Provider value={{ currentPath, params, searchParams, navigate, push, replace, setSearchParams, prefetch }}>
       {renderContent()}
     </RouterContext.Provider>
   );

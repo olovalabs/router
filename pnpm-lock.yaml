@@ -18,7 +18,29 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  apps/my-app:
+  apps/olova-router:
+    dependencies:
+      react:
+        specifier: '>=18.0.0'
+        version: 19.2.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.4
+      '@types/react':
+        specifier: ^19.2.5
+        version: 19.2.7
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.2.4
+        version: 7.3.0(@types/node@24.10.4)
+
+  apps/template:
     dependencies:
       olova-router:
         specifier: workspace:*
@@ -63,28 +85,6 @@ importers:
       typescript-eslint:
         specifier: ^8.46.4
         version: 8.50.1(eslint@9.39.2)(typescript@5.9.3)
-      vite:
-        specifier: ^7.2.4
-        version: 7.3.0(@types/node@24.10.4)
-
-  apps/olova-router:
-    dependencies:
-      react:
-        specifier: '>=18.0.0'
-        version: 19.2.3
-    devDependencies:
-      '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.4
-      '@types/react':
-        specifier: ^19.2.5
-        version: 19.2.7
-      tsup:
-        specifier: ^8.0.0
-        version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)
-      typescript:
-        specifier: ~5.9.3
-        version: 5.9.3
       vite:
         specifier: ^7.2.4
         version: 7.3.0(@types/node@24.10.4)

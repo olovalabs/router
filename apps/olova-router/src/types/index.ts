@@ -16,6 +16,12 @@ export type LoaderFunction<T = unknown> = (context: LoaderContext) => Promise<T>
 
 export type ActionFunction<T = unknown> = (context: ActionContext) => Promise<T> | T;
 
+export interface RetryConfig {
+  maxRetries?: number;
+  delay?: number;
+  backoff?: 'linear' | 'exponential';
+}
+
 export interface RouteDefinition<TLoader = unknown, TAction = unknown> {
   __isRouteDefinition: true;
   loader?: LoaderFunction<TLoader>;
@@ -24,8 +30,14 @@ export interface RouteDefinition<TLoader = unknown, TAction = unknown> {
   pendingComponent?: ComponentType;
   errorComponent?: ComponentType<{ error: Error; retry: () => void }>;
   staleTime: number;
+  gcTime: number;
   validateParams?: (params: Record<string, string>) => unknown;
   beforeEnter?: (context: LoaderContext) => boolean | Promise<boolean>;
+  retry?: RetryConfig;
+  refetchOnWindowFocus: boolean;
+  refetchOnReconnect: boolean;
+  refetchInterval?: number;
+  refetchOnMount: boolean;
 }
 
 export interface RouteEntry {
@@ -142,6 +154,7 @@ export interface RouterContextType {
   push: (path: string) => void;
   replace: (path: string) => void;
   setSearchParams: (params: Record<string, string | string[] | null>, options?: SetSearchParamsOptions) => void;
+  prefetch: (path: string) => void;
 }
 
 export interface OutletContextType {
